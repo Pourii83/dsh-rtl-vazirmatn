@@ -400,8 +400,13 @@ html[dir="rtl"][data-windows-titlebar] .wtg9ga_collapsed .wtg9ga_newSession {
             for (const node of record.addedNodes) {
               const element = node.nodeType === 1 ? node : node.parentElement
               if (element === null) continue
-              if (element.closest('[data-input-scroll]') !== null) requestComposerSync()
-              else markChangedNode(element)
+              if (
+                element.closest('[data-input-scroll]') !== null ||
+                element.querySelector('[data-input-scroll]') !== null
+              ) {
+                requestComposerSync()
+              }
+              markChangedNode(element)
             }
           }
         })
