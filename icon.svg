@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Right-to-left layout with Vazirmatn">
+  <rect width="64" height="64" rx="14" fill="#0f1115"/>
+  <g stroke="#e9ecf2" stroke-width="4" stroke-linecap="round">
+    <path d="M48 18H24"/>
+    <path d="M48 28H31"/>
+    <path d="M48 38H36"/>
+  </g>
+  <g stroke="#7aaaff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M49 49H35"/>
+    <path d="M41 43l-6 6 6 6"/>
+  </g>
+</svg>

@@ -1,0 +1,59 @@
+{
+  "name": "@local/dsh-rtl-vazirmatn",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Right-to-left layout with the bundled Vazirmatn typeface for the DeepSeek Harness Web UI.",
+  "license": "MIT",
+  "author": "Pourii",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pourii83/dsh-rtl-vazirmatn.git"
+  },
+  "homepage": "https://github.com/Pourii83/dsh-rtl-vazirmatn#readme",
+  "bugs": {
+    "url": "https://github.com/Pourii83/dsh-rtl-vazirmatn/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "rtl",
+    "right-to-left",
+    "vazirmatn",
+    "persian",
+    "farsi",
+    "ui-plugin"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "OFL.txt",
+    "AUTHORS.txt",
+    "README.md",
+    "README.fa.md",
+    "LICENSE",
+    "client.template.js",
+    "assets/*.woff2",
+    "tools/*"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}

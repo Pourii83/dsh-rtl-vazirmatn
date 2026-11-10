@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "RTL layout with Vazirmatn",
+    "description": "Mirrors the whole interface, or just the chat transcript and text field, and sets the bundled Vazirmatn typeface while code, terminal output, and editors stay left-to-right."
+  }
+}
