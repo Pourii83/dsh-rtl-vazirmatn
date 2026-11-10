@@ -23,6 +23,10 @@ external font CDN, and no edits to DSH itself.
   text renders identically on every machine, offline, without a flash of missing font.
 - **Code stays left-to-right**: code blocks, inline code, terminal output, and editors keep their
   natural reading order inside an RTL transcript.
+- **Content follows its language**: every chat row and text block is RTL for Persian and LTR for
+  English. The direction is decided by the share of RTL letters in the block — not by its first
+  character — so an English tool log stays left-aligned and a Persian sentence that opens with an
+  English term stays right-aligned, in every layout mode.
 - **Chat-only mode is surgical**: it mirrors the transcript and the composer's text field through
   stable host hooks, and deliberately leaves the conversation header and the composer's button row
   untouched.
@@ -42,6 +46,9 @@ external font CDN, and no edits to DSH itself.
 
 The switch sits beside Settings in the sidebar footer; each click advances the mode. The choice is
 stored in `localStorage` under `@local/dsh-rtl-vazirmatn:mode`.
+
+Layout mode and content direction are independent: the mode decides how the surrounding chrome is
+mirrored, while each transcript block picks RTL or LTR from its own text in every mode.
 
 ## Screenshot
 
@@ -73,6 +80,17 @@ elements that stay stable across DSH releases:
 
 - `[data-chat-flow]` — the message column;
 - `[data-input-scroll]` — the composer's text field.
+
+### Content direction
+
+Inside the transcript, each chat row (`[data-chat-node-key]`), trajectory row
+(`[data-trajectory-row-key]`), step row, and markdown block (`p`, `li`, headings, blockquotes,
+table cells) receives its own `dir`. A small mutation observer re-evaluates blocks as messages
+stream in and compares the number of RTL-script letters (Arabic/Persian, Hebrew, Syriac) with the
+number of Latin letters: the block is RTL when RTL letters are at least half of them. The first
+character never decides, so `second grep for «تمام عرض»` stays LTR while
+`فایل را با npm run build بساز` is RTL. Code, inline code, terminals, and editors are excluded from
+the scan, and the composer text field follows its draft the same way.
 
 ### Typeface
 

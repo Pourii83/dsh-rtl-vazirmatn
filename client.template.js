@@ -1,19 +1,26 @@
 /**
  * Browser half of the RTL + Vazirmatn bundle.
  *
- * Two direction modes:
+ * Two layout modes:
  * - `full`: `dir="rtl"` on the document, so the whole interface mirrors.
  * - `chat`: only the transcript and the composer text field mirror. The
  *   conversation header, the composer's button row, the sidebar, settings,
  *   and the rest of DSH keep their normal left-to-right order.
- * - `off`: no mirrored layout (the typeface still applies).
+ * - `off`: no mirrored chrome (the typeface still applies).
  *
- * The sidebar-foot switch cycles the modes and remembers the choice per
- * browser. The stylesheet pins technical surfaces back to left-to-right,
+ * Independently of the layout mode, chat content follows the script of the
+ * text it holds: Persian (and other RTL scripts) render right-to-left, English
+ * renders left-to-right. The direction of a block comes from the letters that
+ * make it up, not from its first character, so a Persian sentence that starts
+ * with an English term stays RTL and an English log line that quotes a
+ * Persian name stays LTR.
+ *
+ * The sidebar-foot switch cycles the layout modes and remembers the choice
+ * per browser. The stylesheet pins technical surfaces back to left-to-right,
  * mirrors markdown indents, and repairs host chrome that is positioned with
  * physical left/right values.
  *
- * Regeneration: `tools/build-client.ps1` inlines the bundled WOFF2 face into
+ * Regeneration: `tools/build-client.mjs` inlines the bundled WOFF2 face into
  * the @font-face source and writes `client.js`.
  */
 window.__ModuleLoader__.load({
@@ -26,20 +33,38 @@ window.__ModuleLoader__.load({
     const LEGACY_KEY = `${PLUGIN_ID}:direction`
     const MODES = ['full', 'chat', 'off']
     /**
-     * Full-mode scope: the whole document.
+     * Full-mode scope: the whole document. Chat-mode base direction: the
+     * transcript column only.
      */
     const FULL = 'html[dir="rtl"]'
-    /**
-     * Chat-mode scopes: the message column, and the composer's text field.
-     * Both are stable host attributes, so the header and the button row stay
-     * out of the mirrored region.
-     */
     const CHAT_FLOW = 'html[data-dsh-rtl="chat"] [data-chat-flow]'
-    const CHAT_INPUT = 'html[data-dsh-rtl="chat"] [data-input-scroll]'
-    /** Mirrored transcript text and everything inside it. */
-    const RTL_CONTENT = `:is(${FULL}, ${CHAT_FLOW})`
-    /** Mirrored text-field content and everything inside it. */
-    const RTL_INPUT = `:is(${FULL}, ${CHAT_INPUT})`
+    /** Content roots the automatic direction engine runs inside. */
+    const CONTENT_ROOTS =
+      '[data-conversation-content], [data-chat-flow], [data-trajectory-scroll]'
+    /** Subtrees that keep their own direction (technical content and editors). */
+    const EXCLUDED =
+      'pre, code, kbd, samp, textarea, input, script, style, [data-input-scroll], [data-composer-card], [contenteditable="true"]'
+    /** Rows and text blocks that receive a direction of their own. */
+    const UNIT_SELECTOR = [
+      '[data-chat-node-key]',
+      '[data-trajectory-row-key]',
+      '[data-step-process]',
+      'p',
+      'li',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'blockquote',
+      'figcaption',
+      'dt',
+      'dd',
+      'td',
+      'th',
+    ].join(', ')
+    const UNIT_QUERY = `:is(${CONTENT_ROOTS}) :is(${UNIT_SELECTOR})`
     const CSS = `/* Vazirmatn 33.0.3, bundled variable face (SIL Open Font License 1.1). */
 @font-face {
   font-family: "Vazirmatn";
@@ -59,36 +84,34 @@ body {
 }
 
 /* Full mode drives the document direction. Chat-only mode mirrors the
-   transcript and the text field alone: the header and the composer's button
-   row are left untouched on purpose. */
-${CHAT_FLOW},
-${CHAT_INPUT} {
+   transcript; the header and the composer's button row stay untouched. The
+   script then assigns each block its own direction, so Persian text is RTL
+   and English text is LTR inside either shell direction. */
+${CHAT_FLOW} {
   direction: rtl;
 }
 
-/* Technical content keeps left-to-right reading order in either mode. */
-${RTL_CONTENT} :is(pre, pre *, code, kbd, samp, .xterm, .monaco-editor) {
+/* Technical content keeps left-to-right reading order wherever it sits inside
+   a right-to-left block. */
+:is([dir="rtl"], html[data-dsh-rtl="chat"] [data-chat-flow]) :is(pre, pre *, code, kbd, samp, .xterm, .monaco-editor) {
   direction: ltr;
   unicode-bidi: isolate;
   text-align: left;
 }
 
-${RTL_INPUT} :is(code, kbd, samp) {
-  direction: ltr;
-  unicode-bidi: isolate;
-}
-
-/* Markdown lists and block quotes mirror their physical indents. */
-${RTL_CONTENT} :where(ul, ol) {
+/* Markdown indents follow the direction the block actually computes, so an
+   English paragraph inside a right-to-left transcript keeps left-aligned
+   bullets and a Persian paragraph gets mirrored ones. */
+:dir(rtl) :where(ul, ol) {
   padding-left: 0;
   padding-right: 18px;
 }
 
-${RTL_CONTENT} :where(ul, ol) :where(ul, ol) {
+:dir(rtl) :where(ul, ol) :where(ul, ol) {
   padding-right: 18px;
 }
 
-${RTL_CONTENT} blockquote {
+:dir(rtl) blockquote {
   margin-left: 0;
   margin-right: 0;
   padding-left: 0;
@@ -97,20 +120,19 @@ ${RTL_CONTENT} blockquote {
   border-right: 2px solid var(--dsw-alias-border-l2);
 }
 
-/* Text field: the caret and the placeholder start on the right, and the
-   input's own scrollbar moves to the side it occupies. */
-${RTL_INPUT} .GRgSLq_input {
+/* The composer text field follows its own content: the padding and the
+   scrollbar clearance move to the side the caret starts on. */
+[data-input-scroll][dir="rtl"] {
+  margin-left: 4px;
+  margin-right: 0;
+}
+
+[data-input-scroll][dir="rtl"] .GRgSLq_input {
   padding: 4px 14px 0 8px;
 }
 
-${RTL_INPUT} .GRgSLq_placeholder {
+[data-input-scroll][dir="rtl"] .GRgSLq_placeholder {
   inset: 4px 14px auto 8px;
-}
-
-html[dir="rtl"] [data-input-scroll],
-html[data-dsh-rtl="chat"] [data-input-scroll] {
-  margin-left: 4px;
-  margin-right: 0;
 }
 
 /* Full mode only: the composer's trailing controls reach the inline end
@@ -136,9 +158,9 @@ html[dir="rtl"] .an3WzG_composerSeat {
   right: 0;
 }
 
-/* Tool-call and disclosure headers read from the right. */
-${RTL_CONTENT} .F07MqG_header,
-${RTL_CONTENT} .DXuOLW_header {
+/* Tool-call and disclosure headers read from the right when their own content
+   is right-to-left, and stay left-aligned for English rows. */
+:is(.F07MqG_header, .DXuOLW_header):dir(rtl) {
   text-align: right;
 }
 
@@ -191,6 +213,223 @@ html[dir="rtl"][data-windows-titlebar] .wtg9ga_collapsed .wtg9ga_newSession {
 }
 `
 
+    /* ── Script-based direction ─────────────────────────────────────────── */
+
+    /**
+     * Whether a code unit belongs to a script written right-to-left: Hebrew,
+     * Arabic (which covers Persian), Syriac, and their presentation forms.
+     * @param code - UTF-16 code unit.
+     * @returns true for an RTL letter.
+     */
+    function isRtlLetter(code) {
+      return (
+        (code >= 0x0590 && code <= 0x05ff) ||
+        (code >= 0x0600 && code <= 0x06ff) ||
+        (code >= 0x0700 && code <= 0x074f) ||
+        (code >= 0x0750 && code <= 0x077f) ||
+        (code >= 0x08a0 && code <= 0x08ff) ||
+        (code >= 0xfb1d && code <= 0xfdff) ||
+        (code >= 0xfe70 && code <= 0xfeff)
+      )
+    }
+
+    /**
+     * Whether a code unit is a Latin letter, including the accented ranges
+     * used by European languages.
+     * @param code - UTF-16 code unit.
+     * @returns true for a Latin letter.
+     */
+    function isLatinLetter(code) {
+      return (
+        (code >= 0x0041 && code <= 0x005a) ||
+        (code >= 0x0061 && code <= 0x007a) ||
+        (code >= 0x00c0 && code <= 0x024f)
+      )
+    }
+
+    /**
+     * Pick a direction from the letters a block is made of, rather than from
+     * its first character: a block is RTL when RTL letters are at least half
+     * of its letters. A Persian sentence that opens with an English term stays
+     * RTL; an English line that quotes a Persian phrase stays LTR.
+     * @param text - the block's visible text.
+     * @returns `rtl`, `ltr`, or null when the text carries no letters at all.
+     */
+    function readDirection(text) {
+      let rtl = 0
+      let latin = 0
+      const length = Math.min(text.length, 20000)
+      for (let i = 0; i < length; i += 1) {
+        const code = text.charCodeAt(i)
+        if (isRtlLetter(code)) rtl += 1
+        else if (isLatinLetter(code)) latin += 1
+      }
+      if (rtl === 0 && latin === 0) return null
+      if (rtl === 0) return 'ltr'
+      if (latin === 0) return 'rtl'
+      return rtl >= latin ? 'rtl' : 'ltr'
+    }
+
+    /** requestAnimationFrame with a timer fallback for non-window hosts. */
+    const scheduleFrame =
+      typeof requestAnimationFrame === 'function'
+        ? (callback) => requestAnimationFrame(callback)
+        : (callback) => setTimeout(callback, 16)
+    /** Cancel the matching scheduled frame. */
+    const cancelFrame =
+      typeof cancelAnimationFrame === 'function'
+        ? (id) => cancelAnimationFrame(id)
+        : (id) => clearTimeout(id)
+
+    const pendingUnits = new Set()
+    let unitFrame = 0
+    let composerFrame = 0
+
+    /**
+     * Give one row or text block the direction its own text asks for, and
+     * leave host-set attributes alone.
+     * @param unit - candidate element.
+     */
+    function applyUnit(unit) {
+      if (!unit.isConnected) return
+      if (unit.closest(EXCLUDED) !== null) return
+      if (unit.hasAttribute('dir') && !unit.hasAttribute('data-auto-dir')) return
+      const direction = readDirection(unit.textContent || '')
+      if (direction === null) {
+        if (unit.hasAttribute('data-auto-dir')) {
+          unit.removeAttribute('dir')
+          unit.removeAttribute('data-auto-dir')
+        }
+        return
+      }
+      if (unit.getAttribute('data-auto-dir') !== direction) {
+        unit.setAttribute('data-auto-dir', direction)
+        unit.setAttribute('dir', direction)
+      }
+    }
+
+    /** Apply every queued unit in one frame. */
+    function flushUnits() {
+      for (const unit of pendingUnits) applyUnit(unit)
+      pendingUnits.clear()
+    }
+
+    /** Schedule one frame that applies the queued units. */
+    function requestUnitFlush() {
+      if (unitFrame !== 0) return
+      unitFrame = scheduleFrame(() => {
+        unitFrame = 0
+        flushUnits()
+      })
+    }
+
+    /**
+     * Queue a unit when it is inside a content root and outside the technical
+     * subtrees that keep their own direction.
+     * @param unit - candidate element.
+     */
+    function markUnit(unit) {
+      if (!(unit instanceof Element)) return
+      if (unit.closest(EXCLUDED) !== null) return
+      if (unit.closest(CONTENT_ROOTS) === null) return
+      pendingUnits.add(unit)
+      requestUnitFlush()
+    }
+
+    /**
+     * Queue the units affected by one changed DOM node: the rows and blocks
+     * around it (so a growing message re-evaluates) and the units inside it
+     * (so a newly rendered subtree is covered).
+     * @param target - changed node.
+     */
+    function markChangedNode(target) {
+      if (!(target instanceof Element)) return
+      let unit = target.closest(UNIT_SELECTOR)
+      let depth = 0
+      while (unit !== null && depth < 6) {
+        markUnit(unit)
+        unit = unit.parentElement === null ? null : unit.parentElement.closest(UNIT_SELECTOR)
+        depth += 1
+      }
+      for (const inner of target.querySelectorAll(UNIT_SELECTOR)) markUnit(inner)
+    }
+
+    /**
+     * Point the composer's text field at the script of its draft. An empty
+     * field falls back to the layout mode's own direction.
+     */
+    function syncComposer() {
+      const fallback = mode === 'off' ? 'ltr' : 'rtl'
+      for (const scroll of document.querySelectorAll('[data-input-scroll]')) {
+        const editable = scroll.querySelector('[data-composer-input]')
+        const text = editable === null ? '' : editable.textContent || ''
+        const direction = readDirection(text) ?? fallback
+        if (scroll.getAttribute('dir') !== direction) {
+          scroll.setAttribute('dir', direction)
+          scroll.setAttribute('data-auto-dir', direction)
+        }
+      }
+    }
+
+    /** Schedule one frame that re-reads the composer draft. */
+    function requestComposerSync() {
+      if (composerFrame !== 0) return
+      composerFrame = scheduleFrame(() => {
+        composerFrame = 0
+        syncComposer()
+      })
+    }
+
+    /**
+     * Watch the page for content changes and keep their direction current.
+     * Attribute changes are not observed, so writing `dir` here never feeds
+     * back into the observer.
+     * @param ctx - owning Client plugin context.
+     */
+    function installAutoDirection(ctx) {
+      ctx.effect(() => {
+        const observer = new MutationObserver((records) => {
+          for (const record of records) {
+            if (record.type === 'characterData') {
+              const parent = record.target.parentElement
+              if (parent === null) continue
+              if (parent.closest('[data-input-scroll]') !== null) requestComposerSync()
+              else markChangedNode(parent)
+              continue
+            }
+            for (const node of record.addedNodes) {
+              const element = node.nodeType === 1 ? node : node.parentElement
+              if (element === null) continue
+              if (element.closest('[data-input-scroll]') !== null) requestComposerSync()
+              else markChangedNode(element)
+            }
+          }
+        })
+        observer.observe(document.body, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        })
+        for (const unit of document.querySelectorAll(UNIT_QUERY)) markUnit(unit)
+        flushUnits()
+        syncComposer()
+        return () => {
+          observer.disconnect()
+          if (unitFrame !== 0) cancelFrame(unitFrame)
+          if (composerFrame !== 0) cancelFrame(composerFrame)
+          unitFrame = 0
+          composerFrame = 0
+          pendingUnits.clear()
+          for (const element of document.querySelectorAll('[data-auto-dir]')) {
+            element.removeAttribute('data-auto-dir')
+            element.removeAttribute('dir')
+          }
+        }
+      }, 'rtl-vazirmatn: automatic content direction')
+    }
+
+    /* ── Layout modes ───────────────────────────────────────────────────── */
+
     /**
      * Read the remembered mode; the whole interface is right-to-left unless
      * the browser stored another mode (including the earlier rtl/ltr value).
@@ -239,13 +478,14 @@ html[dir="rtl"][data-windows-titlebar] .wtg9ga_collapsed .wtg9ga_newSession {
     }
 
     /**
-     * Select a direction mode.
+     * Select a layout mode.
      * @param next - `full`, `chat`, or `off`.
      */
     function chooseMode(next) {
       mode = next
       rememberMode(next)
       syncMode()
+      requestComposerSync()
       for (const notify of subscribers) notify()
     }
 
@@ -299,12 +539,12 @@ html[dir="rtl"][data-windows-titlebar] .wtg9ga_collapsed .wtg9ga_newSession {
     /** Tooltip describing the current state and the next click. */
     const MODE_TITLES = {
       full: 'Whole interface is right-to-left — click for a right-to-left chat only',
-      chat: 'Chat transcript and input are right-to-left — click to turn layout mirroring off',
-      off: 'Left-to-right — click for the whole interface right-to-left',
+      chat: 'Chat is right-to-left — click to turn layout mirroring off',
+      off: 'Interface is left-to-right — click to mirror the whole interface',
     }
 
     /**
-     * Compact sidebar-foot switch that cycles the three direction modes. Full
+     * Compact sidebar-foot switch that cycles the three layout modes. Full
      * columns show the mode label beside the icon; the rail shows the icon.
      * @param props - sidebar footer action props (only `wide` matters here).
      * @returns the switch button.
@@ -361,6 +601,7 @@ html[dir="rtl"][data-windows-titlebar] .wtg9ga_collapsed .wtg9ga_newSession {
         mode = readMode()
         installDirection(ctx)
         installStyles(ctx)
+        installAutoDirection(ctx)
         ctx.slots.inject('sidebar.footer.action', () =>
           ctx.slots.register(
             {
